@@ -9,8 +9,21 @@ import {
   Search,
   Users,
   MessageSquare,
+  Activity,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useUpdateAppStatus } from "../hooks/useUpdateAppStatus";
+import { useGetAppStatus } from "../hooks/useGetAppStatus";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface ChatSidebarProps {
   selectedChatId: number | null;
@@ -22,10 +35,22 @@ export default function ChatSidebar({
   onSelectChat,
 }: ChatSidebarProps) {
   const { data: clientGroups, isLoading } = useGetClientChats();
+  const { data: appStatus } = useGetAppStatus();
+  const updateAppStatus = useUpdateAppStatus();
   const [expandedClients, setExpandedClients] = useState<Set<number>>(
     new Set()
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusMsg, setStatusMsg] = useState("");
+  const [isAvailable, setIsAvailable] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (appStatus) {
+      setStatusMsg(appStatus.status_message || "");
+      setIsAvailable(appStatus.is_available);
+    }
+  }, [appStatus]);
 
   useEffect(() => {
     if (selectedChatId && clientGroups) {
@@ -52,6 +77,17 @@ export default function ChatSidebar({
       newExpanded.add(clientId);
     }
     setExpandedClients(newExpanded);
+  };
+
+  const handleUpdateStatus = () => {
+    if (appStatus) {
+      updateAppStatus.mutate({
+        id: appStatus.id,
+        status_message: statusMsg,
+        is_available: isAvailable,
+      });
+      setIsDialogOpen(false);
+    }
   };
 
   // Filter clients and chats based on search query
@@ -167,6 +203,68 @@ export default function ChatSidebar({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Status update section */}
+      <div className="mt-auto border-t p-3 bg-white">
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-between"
+            >
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    isAvailable ? "bg-green-500" : "bg-gray-400"
+                  }`}
+                ></div>
+                {/* <CircleUserRound className="h-4 w-4 text-gray-500" /> */}
+                <span className="text-sm font-medium">
+                  {isAvailable ? "Available" : "Unavailable"}
+                </span>
+              </div>
+              <Activity className="h-4 w-4 text-gray-500" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Update Status</DialogTitle>
+              <DialogDescription>
+                Set your availability and status message
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-3">
+              <div className="flex items-center justify-between">
+                <label htmlFor="availability" className="text-sm font-medium">
+                  Available for new queries
+                </label>
+                <Switch
+                  id="availability"
+                  checked={isAvailable}
+                  onCheckedChange={setIsAvailable}
+                />
+              </div>
+              <div className="grid gap-2">
+                <label htmlFor="status-message" className="text-sm font-medium">
+                  Status Message
+                </label>
+                <Input
+                  id="status-message"
+                  placeholder="Set your status message"
+                  value={statusMsg}
+                  onChange={(e) => setStatusMsg(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit" onClick={handleUpdateStatus}>
+                Update Status
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

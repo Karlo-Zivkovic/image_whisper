@@ -2,15 +2,8 @@
 
 import { useGetChatMessages } from "../hooks/useGetChatMessages";
 import ChatMessage from "./ChatMessage";
-import { Button } from "@/components/ui/button";
-import {
-  MessageSquare,
-  User,
-  ChevronLeft,
-  Upload,
-  MoreVertical,
-} from "lucide-react";
-
+import { MessageSquare } from "lucide-react";
+import ChatHeader from "./ChatHeader";
 interface ChatWindowProps {
   chatId: number | null;
 }
@@ -73,48 +66,9 @@ export default function ChatWindow({ chatId }: ChatWindowProps) {
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
         <div className="max-w-4xl mx-auto space-y-4">
           {messages.map((message) => (
-            <ChatMessage
-              key={message.id}
-              message={message}
-              isWorkerResponse={false}
-            />
+            <ChatMessage key={message.id} message={message} />
           ))}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ChatHeader({
-  chatId,
-  clientId,
-}: {
-  chatId: number;
-  clientId: number | null;
-}) {
-  return (
-    <div className="border-b px-4 py-3 bg-white flex items-center justify-between">
-      <div className="flex items-center">
-        <div className="hidden sm:flex mr-2">
-          <ChevronLeft className="h-5 w-5 text-gray-500" />
-        </div>
-        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-3">
-          <User className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="font-medium">
-            Client {clientId} - Chat {chatId}
-          </div>
-          <div className="text-xs text-gray-500">Client Images & Queries</div>
-        </div>
-      </div>
-      <div className="flex items-center space-x-2">
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <Upload className="h-5 w-5 text-gray-600" />
-        </Button>
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <MoreVertical className="h-5 w-5 text-gray-600" />
-        </Button>
       </div>
     </div>
   );

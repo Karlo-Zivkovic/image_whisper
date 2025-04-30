@@ -14,6 +14,8 @@ import {
   Upload,
   Image as ImageIcon,
   Clipboard,
+  MessageCircle,
+  Loader2,
 } from "lucide-react";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -23,30 +25,56 @@ const STATUS_STYLES: Record<string, string> = {
   error: "bg-red-100 text-red-800 border-red-200",
 };
 
-export default function ChatMessage({
-  message,
-  isWorkerResponse = false,
-}: {
-  message: ClientQueries;
-  isWorkerResponse?: boolean;
-}) {
+export default function ChatMessage({ message }: { message: ClientQueries }) {
   const [expanded, setExpanded] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const { uploadImage, loading, error } = useSupabaseImageUpload();
+  const {
+    uploadImage,
+    loading: uploadLoading,
+    error: uploadError,
+  } = useSupabaseImageUpload();
   const { mutate: updateMessage } = useUpdateClientQueries();
   const [pasteError, setPasteError] = useState<string | null>(null);
   const pasteAreaRef = useRef<HTMLDivElement>(null);
 
+  // New state to track locally updated message
+  const [localMessage, setLocalMessage] = useState<ClientQueries>(message);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Use the local state or the prop, prioritizing local state for immediate UI updates
+  const currentMessage = localMessage || message;
+  const hasResponse = !!currentMessage.chatgpt_response_url;
+  const messageTime = formatDate(currentMessage.created_at).split(",")[0];
+
   async function handleUpload() {
     if (!file) return;
-    const { url } = await uploadImage(file);
-    if (url) {
-      // Update the chatgpt_response_url in the database
-      updateMessage({
-        id: message.id,
-        chatgpt_response_url: url,
-        status: "completed",
-      });
+
+    setIsUploading(true);
+    try {
+      const { url } = await uploadImage(file);
+      if (url) {
+        // Update the local state immediately for UI
+        setLocalMessage({
+          ...currentMessage,
+          chatgpt_response_url: url,
+          status: "completed",
+        });
+
+        // Update the database
+        updateMessage({
+          id: currentMessage.id,
+          chatgpt_response_url: url,
+          status: "completed",
+        });
+
+        // Reset state
+        setFile(null);
+        setExpanded(false);
+      }
+    } catch (error) {
+      console.error("Upload failed:", error);
+    } finally {
+      setIsUploading(false);
     }
   }
 
@@ -96,19 +124,21 @@ export default function ChatMessage({
     }
   };
 
-  // Determine if this message has a response
-  const hasResponse = !!message.chatgpt_response_url;
-  const messageTime = formatDate(message.created_at).split(",")[0];
+  // Only rendering client query message now (with or without response)
+  return (
+    <div className="flex flex-col items-start w-full max-w-[95%] mb-6">
+      <div className="bg-white rounded-lg p-4 shadow-sm w-full">
+        {/* Query Section */}
+        <div className="mb-4">
+          <div className="flex items-center mb-2">
+            <MessageCircle className="h-4 w-4 text-primary mr-2" />
+            <h3 className="font-medium text-sm text-primary">Client Query</h3>
+          </div>
 
-  // Client query message
-  if (!isWorkerResponse) {
-    return (
-      <div className="flex flex-col items-start max-w-[85%]">
-        <div className="bg-white rounded-lg p-2 shadow-sm">
-          {/* Image */}
-          <div className="relative w-full h-[220px] mb-2 bg-gray-50 rounded">
+          {/* Query Image */}
+          <div className="relative w-full h-[280px] mb-3 bg-gray-50 rounded">
             <Image
-              src={message.image_url}
+              src={currentMessage.image_url}
               alt="Query image"
               fill
               sizes="(max-width: 768px) 100vw, 480px"
@@ -117,39 +147,80 @@ export default function ChatMessage({
           </div>
 
           {/* Query text */}
-          {message.query_text && (
-            <div className="mb-1 whitespace-pre-wrap">
-              <p>{message.query_text}</p>
+          {currentMessage.query_text && (
+            <div className="mb-2 whitespace-pre-wrap">
+              <p className="text-sm">{currentMessage.query_text}</p>
             </div>
           )}
 
           {/* Time and status */}
-          <div className="flex justify-between items-center text-xs text-gray-500 mt-1">
+          <div className="flex justify-between items-center text-xs text-gray-500 mt-2">
             <span>{messageTime}</span>
             <div className="flex items-center gap-1">
-              {message.status === "completed" ? (
-                <CheckCheck className="h-3.5 w-3.5 text-green-500" />
-              ) : (
-                <Clock className="h-3.5 w-3.5" />
+              {!hasResponse && (
+                <>
+                  {currentMessage.status === "completed" ? (
+                    <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+                  ) : (
+                    <Clock className="h-3.5 w-3.5" />
+                  )}
+
+                  {/* Status Tag */}
+                  {currentMessage.status && (
+                    <span
+                      className={`ml-1 px-2 py-0.5 rounded-full font-medium ${
+                        STATUS_STYLES[currentMessage.status]
+                      }`}
+                    >
+                      {currentMessage.status.charAt(0).toUpperCase() +
+                        currentMessage.status.slice(1)}
+                    </span>
+                  )}
+                </>
               )}
             </div>
           </div>
         </div>
 
-        {/* Status Tag */}
-        {message.status && (
-          <div
-            className={`text-xs px-2 py-0.5 rounded-full mt-1 font-medium ${
-              STATUS_STYLES[message.status]
-            }`}
-          >
-            {message.status.charAt(0).toUpperCase() + message.status.slice(1)}
+        {/* Response Section - Show if response exists */}
+        {hasResponse && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center mb-2">
+              <CheckCheck className="h-4 w-4 text-blue-500 mr-2" />
+              <h3 className="font-medium text-sm text-blue-600">
+                Our Response
+              </h3>
+            </div>
+
+            {/* Response Image */}
+            <div className="relative w-full h-[280px] mb-3 bg-gray-50 rounded">
+              <Image
+                src={currentMessage.chatgpt_response_url!}
+                alt="Response image"
+                fill
+                sizes="(max-width: 768px) 100vw, 480px"
+                className="rounded object-contain"
+              />
+            </div>
+
+            {/* Response time and status */}
+            <div className="flex justify-end items-center text-xs text-gray-500 mt-2">
+              {/* <span>{messageTime}</span> */}
+              <div className="flex items-center gap-1">
+                <CheckCheck className="h-3.5 w-3.5 mr-1 text-green-500" />
+                <span
+                  className={`px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES["completed"]}`}
+                >
+                  Completed
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Response actions */}
+        {/* Upload Response UI - Show if no response yet */}
         {!hasResponse && (
-          <div className="mt-2 w-full">
+          <div className="mt-4 pt-4 border-t border-gray-100">
             <Button
               variant="outline"
               size="sm"
@@ -158,13 +229,22 @@ export default function ChatMessage({
                 setExpanded((v) => !v);
                 if (!expanded) setTimeout(focusPasteArea, 100);
               }}
+              disabled={isUploading}
             >
-              <Upload className="h-3.5 w-3.5" />
-              {expanded ? "Hide" : "Upload Response"}
+              {isUploading ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )}
+              {expanded
+                ? "Hide"
+                : isUploading
+                ? "Uploading..."
+                : "Upload Response"}
             </Button>
 
             {expanded && (
-              <div className="mt-2 p-3 bg-white rounded-lg shadow-sm space-y-2">
+              <div className="mt-2 p-3 bg-gray-50 rounded-lg space-y-2">
                 <div className="flex items-center gap-2">
                   <ImageIcon className="h-4 w-4 text-gray-500" />
                   <span className="text-sm">Upload response image</span>
@@ -186,70 +266,69 @@ export default function ChatMessage({
                         : "bg-gray-50 border-gray-200 hover:bg-gray-100"
                     }`}
                   style={{ minHeight: "80px" }}
+                  aria-disabled={isUploading}
                 >
-                  <Clipboard className="h-5 w-5 mx-auto mb-1 text-gray-400" />
-                  {file ? (
-                    <p className="text-green-600">
-                      Image ready: {file.name || "Pasted image"}
-                    </p>
+                  {isUploading ? (
+                    <div className="flex flex-col items-center justify-center">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary mb-1" />
+                      <p className="text-primary">Uploading image...</p>
+                    </div>
                   ) : (
-                    <p className="text-gray-500">
-                      Click here and paste an image or drag and drop
-                    </p>
+                    <>
+                      <Clipboard className="h-5 w-5 mx-auto mb-1 text-gray-400" />
+                      {file ? (
+                        <p className="text-green-600">
+                          Image ready: {file.name || "Pasted image"}
+                        </p>
+                      ) : (
+                        <p className="text-gray-500">
+                          Click here and paste an image or drag and drop
+                        </p>
+                      )}
+                    </>
                   )}
-                  {pasteError && (
+                  {pasteError && !isUploading && (
                     <p className="text-red-500 text-xs mt-1">{pasteError}</p>
                   )}
                 </div>
 
-                <p className="text-xs text-gray-500 my-1">- or -</p>
+                {!isUploading && (
+                  <>
+                    <p className="text-xs text-gray-500 my-1">- or -</p>
 
-                {/* File input */}
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  disabled={loading}
-                  className="text-xs"
-                />
+                    {/* File input */}
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                      disabled={isUploading || uploadLoading}
+                      className="text-xs"
+                    />
+                  </>
+                )}
 
                 <Button
                   onClick={handleUpload}
-                  disabled={!file || loading}
+                  disabled={!file || isUploading || uploadLoading}
                   size="sm"
                   className="w-full text-xs"
                 >
-                  {loading ? "Uploading..." : "Upload Image"}
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    "Upload Image"
+                  )}
                 </Button>
-                {error && <div className="text-red-600 text-xs">{error}</div>}
+                {uploadError && !isUploading && (
+                  <div className="text-red-600 text-xs">{uploadError}</div>
+                )}
               </div>
             )}
           </div>
         )}
-      </div>
-    );
-  }
-
-  // Response message
-  return (
-    <div className="flex justify-end mb-4">
-      <div className="bg-primary/10 rounded-lg p-2 shadow-sm max-w-[85%]">
-        {/* Response Image */}
-        <div className="relative w-full h-[220px] mb-2 bg-gray-50 rounded">
-          <Image
-            src={message.chatgpt_response_url!}
-            alt="Response image"
-            fill
-            sizes="(max-width: 768px) 100vw, 480px"
-            className="rounded object-contain"
-          />
-        </div>
-
-        {/* Time and status */}
-        <div className="flex justify-end items-center text-xs text-gray-500 mt-1">
-          <span>{messageTime}</span>
-          <CheckCheck className="h-3.5 w-3.5 ml-1 text-blue-500" />
-        </div>
       </div>
     </div>
   );
