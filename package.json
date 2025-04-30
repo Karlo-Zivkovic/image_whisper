@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "supabase-types": "supabase gen types typescript --project-id qominiaubhfvtcxjhkgt '$PROJECT_REF' --schema public > database.types.ts"
+    "supabase-types": "supabase gen types typescript --project-id qominiaubhfvtcxjhkgt '$PROJECT_REF' --schema public > supabase/database.types.ts"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.7",
@@ -20,7 +20,8 @@
     "next": "15.3.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.2.0"
+    "tailwind-merge": "^3.2.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
