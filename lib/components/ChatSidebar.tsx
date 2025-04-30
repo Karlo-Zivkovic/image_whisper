@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { useGetClientChats } from "../hooks/useGetClientChats";
-import { useUpdateClientQueries } from "../hooks/useUpdateClientQueries";
 import { useState, useEffect } from "react";
 import {
   ChevronDown,
@@ -28,16 +27,6 @@ export default function ChatSidebar({
   );
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { mutate: updateClientQueries } = useUpdateClientQueries();
-
-  const handleUpdate = () => {
-    updateClientQueries({
-      id: 1,
-      status: "completed",
-    });
-  };
-
-  // Auto-expand client when a chat is selected
   useEffect(() => {
     if (selectedChatId && clientGroups) {
       // Find the client that contains the selected chat
@@ -97,14 +86,6 @@ export default function ChatSidebar({
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-3 border-b bg-white">
-        <Button
-          onClick={handleUpdate}
-          variant="ghost"
-          size="icon"
-          className="rounded-full"
-        >
-          UPDATE
-        </Button>
         <h2 className="text-lg font-semibold mb-3">Client Images & Queries</h2>
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
