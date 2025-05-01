@@ -33,31 +33,31 @@ export type Database = {
       client_queries: {
         Row: {
           chat_id: number
-          chatgpt_response_url: string | null
+          chatgpt_response_url: string[] | null
           client_id: number
           created_at: string
           id: number
-          image_url: string
+          image_url: string[] | null
           query_text: string | null
           status: string | null
         }
         Insert: {
           chat_id?: number
-          chatgpt_response_url?: string | null
+          chatgpt_response_url?: string[] | null
           client_id: number
           created_at?: string
           id?: number
-          image_url: string
+          image_url?: string[] | null
           query_text?: string | null
           status?: string | null
         }
         Update: {
           chat_id?: number
-          chatgpt_response_url?: string | null
+          chatgpt_response_url?: string[] | null
           client_id?: number
           created_at?: string
           id?: number
-          image_url?: string
+          image_url?: string[] | null
           query_text?: string | null
           status?: string | null
         }

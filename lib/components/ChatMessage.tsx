@@ -16,6 +16,8 @@ import {
   Clipboard,
   MessageCircle,
   Loader2,
+  X,
+  Plus,
 } from "lucide-react";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -25,9 +27,11 @@ const STATUS_STYLES: Record<string, string> = {
   error: "bg-red-100 text-red-800 border-red-200",
 };
 
+const MAX_IMAGES = 3;
+
 export default function ChatMessage({ message }: { message: ClientQueries }) {
   const [expanded, setExpanded] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const {
     uploadImage,
     loading: uploadLoading,
@@ -43,32 +47,58 @@ export default function ChatMessage({ message }: { message: ClientQueries }) {
 
   // Use the local state or the prop, prioritizing local state for immediate UI updates
   const currentMessage = localMessage || message;
-  const hasResponse = !!currentMessage.chatgpt_response_url;
+
+  // Ensure chatgpt_response_url is always treated as an array
+  const responseUrls = Array.isArray(currentMessage.chatgpt_response_url)
+    ? currentMessage.chatgpt_response_url
+    : currentMessage.chatgpt_response_url
+    ? [currentMessage.chatgpt_response_url]
+    : [];
+
+  // Check if we have any response images
+  const hasResponse = responseUrls.length > 0;
+
+  // For query image, ensure it's handled properly
+  const queryImageUrl = Array.isArray(currentMessage.image_url)
+    ? currentMessage.image_url[0]
+    : currentMessage.image_url;
+
   const messageTime = formatDate(currentMessage.created_at).split(",")[0];
 
   async function handleUpload() {
-    if (!file) return;
+    if (files.length === 0) return;
 
     setIsUploading(true);
     try {
-      const { url } = await uploadImage(file);
-      if (url) {
+      // Upload each file and get urls
+      const uploadPromises = files.map((file) => uploadImage(file));
+      const results = await Promise.all(uploadPromises);
+
+      // Filter out any failed uploads and extract urls
+      const urls = results
+        .filter((result) => result.url !== null)
+        .map((result) => result.url as string);
+
+      if (urls.length > 0) {
+        // Combine with existing urls if any
+        const newUrls = [...responseUrls, ...urls].slice(0, MAX_IMAGES);
+
         // Update the local state immediately for UI
         setLocalMessage({
           ...currentMessage,
-          chatgpt_response_url: url,
+          chatgpt_response_url: newUrls,
           status: "completed",
         });
 
         // Update the database
         updateMessage({
           id: currentMessage.id,
-          chatgpt_response_url: url,
+          chatgpt_response_url: newUrls,
           status: "completed",
         });
 
         // Reset state
-        setFile(null);
+        setFiles([]);
         setExpanded(false);
       }
     } catch (error) {
@@ -79,43 +109,90 @@ export default function ChatMessage({ message }: { message: ClientQueries }) {
   }
 
   // Handler for pasting image from clipboard
-  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
-    setPasteError(null);
-    const items = e.clipboardData?.items;
-    if (!items) return;
+  const handlePaste = useCallback(
+    async (e: React.ClipboardEvent) => {
+      setPasteError(null);
+      const items = e.clipboardData?.items;
+      if (!items) return;
 
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf("image") !== -1) {
-        const blob = items[i].getAsFile();
-        if (blob) {
-          setFile(blob);
-          e.preventDefault();
-          return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          const blob = items[i].getAsFile();
+          if (blob) {
+            // Check if we're at the maximum image count
+            if (files.length >= MAX_IMAGES) {
+              setPasteError(`Maximum of ${MAX_IMAGES} images allowed.`);
+              return;
+            }
+
+            setFiles((prev) => [...prev, blob]);
+            e.preventDefault();
+            return;
+          }
         }
       }
-    }
 
-    setPasteError("No image found in clipboard. Try copying an image first.");
-  }, []);
+      setPasteError("No image found in clipboard. Try copying an image first.");
+    },
+    [files]
+  );
 
   // Handler for drag and drop
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setPasteError(null);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setPasteError(null);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      if (file.type.startsWith("image/")) {
-        setFile(file);
-      } else {
-        setPasteError("The dropped file is not an image.");
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        // Check if adding these files would exceed the maximum
+        if (files.length + e.dataTransfer.files.length > MAX_IMAGES) {
+          setPasteError(`Maximum of ${MAX_IMAGES} images allowed.`);
+          return;
+        }
+
+        const newFiles = Array.from(e.dataTransfer.files).filter((file) =>
+          file.type.startsWith("image/")
+        );
+
+        if (newFiles.length === 0) {
+          setPasteError("The dropped files are not images.");
+          return;
+        }
+
+        setFiles((prev) => [...prev, ...newFiles]);
       }
-    }
-  }, []);
+    },
+    [files]
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
   }, []);
+
+  // Handle file selection from input
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || e.target.files.length === 0) return;
+
+      // Check if adding these files would exceed the maximum
+      if (files.length + e.target.files.length > MAX_IMAGES) {
+        setPasteError(`Maximum of ${MAX_IMAGES} images allowed.`);
+        return;
+      }
+
+      const newFiles = Array.from(e.target.files);
+      setFiles((prev) => [...prev, ...newFiles]);
+
+      // Reset the input value to allow selecting the same file again
+      e.target.value = "";
+    },
+    [files]
+  );
+
+  // Remove a file from the selection
+  const removeFile = (index: number) => {
+    setFiles(files.filter((_, i) => i !== index));
+  };
 
   // Focus paste area when expanded
   const focusPasteArea = () => {
@@ -136,15 +213,17 @@ export default function ChatMessage({ message }: { message: ClientQueries }) {
           </div>
 
           {/* Query Image */}
-          <div className="relative w-full h-[280px] mb-3 bg-gray-50 rounded">
-            <Image
-              src={currentMessage.image_url}
-              alt="Query image"
-              fill
-              sizes="(max-width: 768px) 100vw, 480px"
-              className="rounded object-contain"
-            />
-          </div>
+          {queryImageUrl && (
+            <div className="relative w-full h-[280px] mb-3 bg-gray-50 rounded">
+              <Image
+                src={queryImageUrl}
+                alt="Query image"
+                fill
+                sizes="(max-width: 768px) 100vw, 480px"
+                className="rounded object-contain"
+              />
+            </div>
+          )}
 
           {/* Query text */}
           {currentMessage.query_text && (
@@ -192,20 +271,41 @@ export default function ChatMessage({ message }: { message: ClientQueries }) {
               </h3>
             </div>
 
-            {/* Response Image */}
-            <div className="relative w-full h-[280px] mb-3 bg-gray-50 rounded">
-              <Image
-                src={currentMessage.chatgpt_response_url!}
-                alt="Response image"
-                fill
-                sizes="(max-width: 768px) 100vw, 480px"
-                className="rounded object-contain"
-              />
+            {/* Response Images Gallery */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mb-3">
+              {responseUrls.map((url, index) => (
+                <div
+                  key={index}
+                  className="relative w-full h-[200px] bg-gray-50 rounded overflow-hidden"
+                >
+                  <Image
+                    src={url}
+                    alt={`Response image ${index + 1}`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className="rounded object-contain"
+                  />
+                </div>
+              ))}
+
+              {/* Add image button if we have less than MAX_IMAGES */}
+              {responseUrls.length < MAX_IMAGES && (
+                <Button
+                  variant="outline"
+                  className="h-[200px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded"
+                  onClick={() => {
+                    setExpanded(true);
+                    setTimeout(focusPasteArea, 100);
+                  }}
+                >
+                  <Plus className="h-6 w-6 mb-2 text-gray-400" />
+                  <span className="text-sm text-gray-500">Add Image</span>
+                </Button>
+              )}
             </div>
 
             {/* Response time and status */}
             <div className="flex justify-end items-center text-xs text-gray-500 mt-2">
-              {/* <span>{messageTime}</span> */}
               <div className="flex items-center gap-1">
                 <CheckCheck className="h-3.5 w-3.5 mr-1 text-green-500" />
                 <span
@@ -218,37 +318,75 @@ export default function ChatMessage({ message }: { message: ClientQueries }) {
           </div>
         )}
 
-        {/* Upload Response UI - Show if no response yet */}
-        {!hasResponse && (
+        {/* Upload Response UI - Show if no response yet or explicitly expanded */}
+        {(!hasResponse || expanded) && (
           <div className="mt-4 pt-4 border-t border-gray-100">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1 text-xs"
-              onClick={() => {
-                setExpanded((v) => !v);
-                if (!expanded) setTimeout(focusPasteArea, 100);
-              }}
-              disabled={isUploading}
-            >
-              {isUploading ? (
-                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-              ) : (
-                <Upload className="h-3.5 w-3.5" />
-              )}
-              {expanded
-                ? "Hide"
-                : isUploading
-                ? "Uploading..."
-                : "Upload Response"}
-            </Button>
+            {!expanded && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1 text-xs"
+                onClick={() => {
+                  setExpanded(true);
+                  setTimeout(focusPasteArea, 100);
+                }}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <Upload className="h-3.5 w-3.5" />
+                )}
+                {isUploading ? "Uploading..." : "Upload Response"}
+              </Button>
+            )}
 
             {expanded && (
               <div className="mt-2 p-3 bg-gray-50 rounded-lg space-y-2">
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm">Upload response image</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm">
+                      Upload response images (up to {MAX_IMAGES})
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setExpanded(false)}
+                    className="h-6 w-6 p-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
+
+                {/* Preview of selected files */}
+                {files.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 my-2">
+                    {files.map((file, index) => (
+                      <div
+                        key={index}
+                        className="relative group bg-gray-100 rounded-md h-20"
+                      >
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={`Preview ${index}`}
+                            className="h-full w-full object-contain p-1"
+                          />
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="absolute -top-2 -right-2 h-5 w-5 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => removeFile(index)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Paste area */}
                 <div
@@ -261,7 +399,7 @@ export default function ChatMessage({ message }: { message: ClientQueries }) {
                   className={`border-2 border-dashed rounded-md p-4 text-center text-sm cursor-pointer
                     focus:outline-none focus:border-primary/50 transition-colors
                     ${
-                      file
+                      files.length > 0
                         ? "bg-green-50 border-green-200"
                         : "bg-gray-50 border-gray-200 hover:bg-gray-100"
                     }`}
@@ -271,18 +409,19 @@ export default function ChatMessage({ message }: { message: ClientQueries }) {
                   {isUploading ? (
                     <div className="flex flex-col items-center justify-center">
                       <Loader2 className="h-5 w-5 animate-spin text-primary mb-1" />
-                      <p className="text-primary">Uploading image...</p>
+                      <p className="text-primary">Uploading images...</p>
                     </div>
                   ) : (
                     <>
                       <Clipboard className="h-5 w-5 mx-auto mb-1 text-gray-400" />
-                      {file ? (
+                      {files.length > 0 ? (
                         <p className="text-green-600">
-                          Image ready: {file.name || "Pasted image"}
+                          {files.length}{" "}
+                          {files.length === 1 ? "image" : "images"} ready
                         </p>
                       ) : (
                         <p className="text-gray-500">
-                          Click here and paste an image or drag and drop
+                          Click here to paste an image or drag and drop
                         </p>
                       )}
                     </>
@@ -300,8 +439,13 @@ export default function ChatMessage({ message }: { message: ClientQueries }) {
                     <Input
                       type="file"
                       accept="image/*"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
-                      disabled={isUploading || uploadLoading}
+                      multiple
+                      onChange={handleFileSelect}
+                      disabled={
+                        isUploading ||
+                        uploadLoading ||
+                        files.length >= MAX_IMAGES
+                      }
                       className="text-xs"
                     />
                   </>
@@ -309,7 +453,7 @@ export default function ChatMessage({ message }: { message: ClientQueries }) {
 
                 <Button
                   onClick={handleUpload}
-                  disabled={!file || isUploading || uploadLoading}
+                  disabled={files.length === 0 || isUploading || uploadLoading}
                   size="sm"
                   className="w-full text-xs"
                 >
@@ -319,7 +463,9 @@ export default function ChatMessage({ message }: { message: ClientQueries }) {
                       Uploading...
                     </>
                   ) : (
-                    "Upload Image"
+                    `Upload ${files.length} ${
+                      files.length === 1 ? "Image" : "Images"
+                    }`
                   )}
                 </Button>
                 {uploadError && !isUploading && (
