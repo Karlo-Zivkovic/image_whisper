@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppStatus } from "@/supabase/entity.types";
-import { supabase } from "../supabase";
+import { supabase } from "../../supabase";
 
 export function useUpdateAppStatus() {
   const queryClient = useQueryClient();

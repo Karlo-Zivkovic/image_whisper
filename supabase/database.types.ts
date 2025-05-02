@@ -30,38 +30,93 @@ export type Database = {
         }
         Relationships: []
       }
-      client_queries: {
+      chats: {
         Row: {
-          chat_id: number
-          chatgpt_response_url: string[] | null
-          client_id: number
           created_at: string
           id: number
-          image_url: string[] | null
-          query_text: string | null
-          status: string | null
+          status: string
+          updated_at: string
+          user_id: number
         }
         Insert: {
-          chat_id?: number
-          chatgpt_response_url?: string[] | null
-          client_id: number
           created_at?: string
           id?: number
-          image_url?: string[] | null
-          query_text?: string | null
-          status?: string | null
+          status: string
+          updated_at: string
+          user_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          status?: string
+          updated_at?: string
+          user_id?: number
+        }
+        Relationships: []
+      }
+      requests: {
+        Row: {
+          chat_id: number
+          created_at: string
+          id: number
+          image_url: string
+          prompt: string
+        }
+        Insert: {
+          chat_id: number
+          created_at?: string
+          id?: number
+          image_url: string
+          prompt: string
         }
         Update: {
           chat_id?: number
-          chatgpt_response_url?: string[] | null
-          client_id?: number
           created_at?: string
           id?: number
-          image_url?: string[] | null
-          query_text?: string | null
-          status?: string | null
+          image_url?: string
+          prompt?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "requests_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      responses: {
+        Row: {
+          chat_id: number
+          created_at: string
+          id: number
+          image_url: string[]
+          message: string | null
+        }
+        Insert: {
+          chat_id: number
+          created_at?: string
+          id?: number
+          image_url: string[]
+          message?: string | null
+        }
+        Update: {
+          chat_id?: number
+          created_at?: string
+          id?: number
+          image_url?: string[]
+          message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "responses_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       templates: {
         Row: {
