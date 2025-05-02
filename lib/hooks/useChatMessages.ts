@@ -1,7 +1,7 @@
 import { useGetRequests } from "./api/useGetRequests";
 import { useGetResponses } from "./api/useGetResponses";
 import { useMemo } from "react";
-import { Request, Response } from "@/supabase/entity.types";
+import { Request, Response } from "@/lib/supabase/entity.types";
 
 export function useChatMessages(chatId: number | null) {
   const { data: requests, isLoading: isLoadingRequests } =

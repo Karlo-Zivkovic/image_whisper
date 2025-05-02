@@ -1,6 +1,6 @@
-import { Request } from "@/supabase/entity.types";
+import { Request } from "@/lib/supabase/entity.types";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "../../supabase";
+import { supabase } from "../../supabase/supabase";
 
 export function useGetRequests(chatId: number | null) {
   return useQuery<Request[]>({

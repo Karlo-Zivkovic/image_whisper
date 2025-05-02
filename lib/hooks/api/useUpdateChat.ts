@@ -1,6 +1,6 @@
-import { Chat } from "@/supabase/entity.types";
+import { Chat } from "@/lib/supabase/entity.types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "../../supabase";
+import { supabase } from "../../supabase/supabase";
 
 type UpdateChatPayload = Partial<Omit<Chat, "id" | "created_at">> & {
   id: number;

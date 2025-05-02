@@ -1,4 +1,4 @@
-import { Chat } from "@/supabase/entity.types";
+import { Chat } from "@/lib/supabase/entity.types";
 import { ChatStatus } from "@/lib/hooks/useChatFilters";
 
 // Helper function to create dates in the past

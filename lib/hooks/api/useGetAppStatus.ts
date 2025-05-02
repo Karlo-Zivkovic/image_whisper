@@ -1,6 +1,6 @@
-import { AppStatus } from "@/supabase/entity.types";
+import { AppStatus } from "@/lib/supabase/entity.types";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "../../supabase";
+import { supabase } from "../../supabase/supabase";
 
 export function useGetAppStatus() {
   return useQuery<AppStatus>({

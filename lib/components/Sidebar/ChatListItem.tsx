@@ -2,7 +2,7 @@ import { MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { ChatStatus } from "@/lib/hooks/useChatFilters";
-import { Chat } from "@/supabase/entity.types";
+import { Chat } from "@/lib/supabase/entity.types";
 
 interface ChatListItemProps {
   chat: Chat;

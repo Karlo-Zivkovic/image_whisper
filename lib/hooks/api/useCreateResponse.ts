@@ -1,6 +1,6 @@
-import { Response } from "@/supabase/entity.types";
+import { Response } from "@/lib/supabase/entity.types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "../../supabase";
+import { supabase } from "../../supabase/supabase";
 
 type CreateResponsePayload = {
   chat_id: number;

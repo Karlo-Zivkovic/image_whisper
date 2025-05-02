@@ -1,4 +1,4 @@
-import { Tables } from "@/supabase/database.types";
+import { Tables } from "@/lib/supabase/database.types";
 
 export type AppStatus = Tables<"app_status">;
 export type Chat = Tables<"chats">;

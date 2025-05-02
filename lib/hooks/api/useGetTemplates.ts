@@ -1,6 +1,6 @@
-import { Template } from "@/supabase/entity.types";
+import { Template } from "@/lib/supabase/entity.types";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "../../supabase";
+import { supabase } from "../../supabase/supabase";
 
 export function useGetTemplates(enabledOnly: boolean = false) {
   return useQuery<Template[]>({

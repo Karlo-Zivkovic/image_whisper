@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useSupabaseImageUpload } from "@/lib/hooks/useSupabaseImageUpload";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 import { useForm } from "react-hook-form";
 import { ResponseFormValues } from "../components/ChatWindow/ChatWindow";
 

@@ -1,6 +1,6 @@
 import { User, MessageSquare, X } from "lucide-react";
 import Image from "next/image";
-import { Request, Response } from "@/supabase/entity.types";
+import { Request, Response } from "@/lib/supabase/entity.types";
 import { Button } from "@/components/ui/button";
 
 export default function MessageDisplay({

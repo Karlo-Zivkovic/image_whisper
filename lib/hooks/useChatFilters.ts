@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Chat } from "@/supabase/entity.types";
+import { Chat } from "@/lib/supabase/entity.types";
 
 // Define chat status options
 export type ChatStatus = "all" | "pending" | "completed" | "in_progress";

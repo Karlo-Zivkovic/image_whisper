@@ -1,6 +1,6 @@
-import { Chat } from "@/supabase/entity.types";
+import { Chat } from "@/lib/supabase/entity.types";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 // import { mockChats } from "@/lib/mocks/mockChats";
 
 export function useGetChats() {

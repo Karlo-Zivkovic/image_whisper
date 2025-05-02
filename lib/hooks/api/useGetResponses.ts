@@ -1,5 +1,5 @@
-import { supabase } from "@/lib/supabase";
-import { Response } from "@/supabase/entity.types";
+import { supabase } from "@/lib/supabase/supabase";
+import { Response } from "@/lib/supabase/entity.types";
 import { useQuery } from "@tanstack/react-query";
 
 export function useGetResponses(chatId: number | null) {
