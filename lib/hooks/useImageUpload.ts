@@ -1,13 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useSupabaseImageUpload } from "@/lib/hooks/useSupabaseImageUpload";
-import { supabase } from "@/lib/supabase/client";
 import { useForm } from "react-hook-form";
 import { ResponseFormValues } from "../components/ChatWindow/ChatWindow";
+import { useCreateResponse } from "./api/useCreateResponse";
 
 export function useImageUpload(chatId: number, refetchResponses: () => void) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const { mutate: createResponse } = useCreateResponse();
   const { uploadImage, loading: isUploading } = useSupabaseImageUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -96,16 +97,10 @@ export function useImageUpload(chatId: number, refetchResponses: () => void) {
         chat_id: chatId,
         message: data.message,
         image_url: uploadedUrls,
-        created_at: new Date().toISOString(),
       };
 
       // Insert the response into the database
-      const { error } = await supabase.from("responses").insert(responseData);
-
-      if (error) {
-        console.error("Error submitting response:", error);
-        return;
-      }
+      await createResponse(responseData);
 
       // Just refetch responses after submitting
       refetchResponses();
