@@ -1,4 +1,3 @@
-import { supabase } from "@/lib/supabase/supabase";
 import { Response } from "@/lib/supabase/entity.types";
 import { useQuery } from "@tanstack/react-query";
 
@@ -8,14 +7,14 @@ export function useGetResponses(chatId: number | null) {
     queryFn: async () => {
       if (chatId === null) return [];
 
-      const { data, error } = await supabase
-        .from("responses")
-        .select("*")
-        .eq("chat_id", chatId)
-        .order("created_at", { ascending: true });
+      const response = await fetch(`/api/responses?chatId=${chatId}`);
 
-      if (error) throw error;
-      return data ?? [];
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to fetch responses");
+      }
+
+      return response.json();
     },
     enabled: chatId !== null,
   });

@@ -34,23 +34,23 @@ export type Database = {
         Row: {
           created_at: string
           id: number
-          status: string
+          status: Database["public"]["Enums"]["chat_status"]
           updated_at: string
-          user_id: number
+          user_id: string
         }
         Insert: {
           created_at?: string
           id?: number
-          status: string
-          updated_at: string
-          user_id: number
+          status: Database["public"]["Enums"]["chat_status"]
+          updated_at?: string
+          user_id: string
         }
         Update: {
           created_at?: string
           id?: number
-          status?: string
+          status?: Database["public"]["Enums"]["chat_status"]
           updated_at?: string
-          user_id?: number
+          user_id?: string
         }
         Relationships: []
       }
@@ -59,21 +59,21 @@ export type Database = {
           chat_id: number
           created_at: string
           id: number
-          image_url: string
+          image_url: string[]
           prompt: string
         }
         Insert: {
           chat_id: number
           created_at?: string
           id?: number
-          image_url: string
+          image_url: string[]
           prompt: string
         }
         Update: {
           chat_id?: number
           created_at?: string
           id?: number
-          image_url?: string
+          image_url?: string[]
           prompt?: string
         }
         Relationships: [
@@ -153,7 +153,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      chat_status: "pending" | "completed" | "error"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -268,6 +268,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      chat_status: ["pending", "completed", "error"],
+    },
   },
 } as const

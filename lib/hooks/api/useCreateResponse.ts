@@ -1,6 +1,5 @@
 import { Response } from "@/lib/supabase/entity.types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "../../supabase/supabase";
 
 type CreateResponsePayload = {
   chat_id: number;
@@ -13,34 +12,27 @@ export function useCreateResponse() {
 
   return useMutation<Response, Error, CreateResponsePayload>({
     mutationFn: async (responseData) => {
-      const { data, error } = await supabase
-        .from("responses")
-        .insert(responseData)
-        .select()
-        .single();
+      const response = await fetch("/api/responses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(responseData),
+      });
 
-      if (error) throw error;
-      if (!data) throw new Error("Failed to create response");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create response");
+      }
 
-      return data;
+      return response.json();
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ["responses"] });
       queryClient.invalidateQueries({
         queryKey: ["responses", response.chat_id],
       });
-
-      // Also update the associated chat
-      supabase
-        .from("chats")
-        .update({
-          updated_at: new Date().toISOString(),
-          status: "completed",
-        })
-        .eq("id", response.chat_id)
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ["chats"] });
-        });
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
     },
   });
 }

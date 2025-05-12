@@ -1,6 +1,5 @@
 import { Chat } from "@/lib/supabase/entity.types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "../../supabase/supabase";
 
 type UpdateChatPayload = Partial<Omit<Chat, "id" | "created_at">> & {
   id: number;
@@ -12,22 +11,21 @@ export function useUpdateChat() {
   return useMutation<Chat, Error, UpdateChatPayload>({
     mutationFn: async (chatData) => {
       const { id, ...updateData } = chatData;
-      const now = new Date().toISOString();
 
-      const { data, error } = await supabase
-        .from("chats")
-        .update({
-          ...updateData,
-          updated_at: now,
-        })
-        .eq("id", id)
-        .select()
-        .single();
+      const response = await fetch(`/api/chats/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updateData),
+      });
 
-      if (error) throw error;
-      if (!data) throw new Error("Failed to update chat");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update chat");
+      }
 
-      return data;
+      return response.json();
     },
     onSuccess: (chat) => {
       queryClient.invalidateQueries({ queryKey: ["chats"] });

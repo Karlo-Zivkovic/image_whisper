@@ -1,6 +1,5 @@
 import { Chat } from "@/lib/supabase/entity.types";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase/supabase";
 // import { mockChats } from "@/lib/mocks/mockChats";
 
 export function useGetChats() {
@@ -20,14 +19,14 @@ export function useGetChats() {
       //   }, 500); // 500ms delay to simulate API call
       // });
 
-      // Original Supabase query (commented out)
-      const { data, error } = await supabase
-        .from("chats")
-        .select("*")
-        .order("updated_at", { ascending: false });
+      const response = await fetch("/api/chats");
 
-      if (error) throw error;
-      return data ?? [];
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to fetch chats");
+      }
+
+      return response.json();
     },
   });
 }

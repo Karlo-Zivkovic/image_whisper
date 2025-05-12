@@ -62,18 +62,19 @@ export default function MessageDisplay({
                 {conversationThreads[0].request.prompt}
               </p>
               {conversationThreads[0].request.image_url && (
-                <div className="flex justify-center">
-                  <Image
-                    src={conversationThreads[0].request.image_url}
-                    alt="Request Image"
-                    width={400}
-                    height={400}
-                    className={`rounded-md ${
-                      conversationThreads.length === 1
-                        ? "max-h-[250px]"
-                        : "max-h-[300px]"
-                    } w-auto object-contain`}
-                  />
+                <div className="flex justify-center gap-2 overflow-x-auto pb-2">
+                  {Array.isArray(conversationThreads[0].request.image_url) &&
+                    conversationThreads[0].request.image_url.map((url, i) => (
+                      <div key={i} className="flex-shrink-0">
+                        <Image
+                          src={url}
+                          alt={`Request Image ${i + 1}`}
+                          width={240}
+                          height={180}
+                          className="rounded-md h-44 w-auto object-cover"
+                        />
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
@@ -105,40 +106,16 @@ export default function MessageDisplay({
                 )}
                 {conversationThreads[0].response.image_url &&
                   conversationThreads[0].response.image_url.length > 0 && (
-                    <div
-                      className={`flex justify-center ${
-                        conversationThreads[0].response.image_url.length > 1
-                          ? "flex-wrap gap-3"
-                          : ""
-                      }`}
-                    >
+                    <div className="flex justify-center gap-2 overflow-x-auto pb-2">
                       {conversationThreads[0].response.image_url.map(
                         (url, i) => (
-                          <div key={i} className="mt-2">
+                          <div key={i} className="flex-shrink-0">
                             <Image
                               src={url}
                               alt={`Response Image ${i + 1}`}
-                              width={
-                                conversationThreads[0].response &&
-                                conversationThreads[0].response.image_url &&
-                                conversationThreads[0].response.image_url
-                                  .length > 1
-                                  ? 320
-                                  : 400
-                              }
-                              height={
-                                conversationThreads[0].response &&
-                                conversationThreads[0].response.image_url &&
-                                conversationThreads[0].response.image_url
-                                  .length > 1
-                                  ? 320
-                                  : 400
-                              }
-                              className={`rounded-md ${
-                                conversationThreads.length === 1
-                                  ? "max-h-[250px]"
-                                  : "max-h-[300px]"
-                              } w-auto object-contain`}
+                              width={240}
+                              height={180}
+                              className="rounded-md h-44 w-auto object-cover"
                             />
                           </div>
                         )
